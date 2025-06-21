@@ -1,11 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.database.mongodb import connect_to_mongo, close_mongo_connection
-from app.routers import users, agents
-from app.utils.middleware import LoggingMiddleware, http_exception_handler, general_exception_handler
+from app.routers import users, agents, auth
 
 
 @asynccontextmanager
@@ -17,54 +16,67 @@ async def lifespan(app: FastAPI):
     await close_mongo_connection()
 
 
-app = FastAPI(
-    title=settings.app_name,
-    version=settings.version,
-    description="Production-level FastAPI server for user and agent management with MongoDB",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    lifespan=lifespan
-)
+def create_application() -> FastAPI:
+    application = FastAPI(
+        title=settings.app_name,
+        version=settings.version,
+        description="Full stack FastAPI and MongoDB application following best practices",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        lifespan=lifespan,
+        openapi_url=f"{settings.api_v1_prefix}/openapi.json"
+    )
 
-# Add middleware
-app.add_middleware(LoggingMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    # Add CORS middleware
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-# Add exception handlers
-app.add_exception_handler(HTTPException, http_exception_handler)
-app.add_exception_handler(Exception, general_exception_handler)
+    # Include routers with proper API versioning
+    application.include_router(
+        auth.router,
+        prefix=f"{settings.api_v1_prefix}/auth",
+        tags=["Authentication"]
+    )
+    
+    application.include_router(
+        users.router,
+        prefix=f"{settings.api_v1_prefix}/users",
+        tags=["Users"]
+    )
 
-# Include routers
-app.include_router(
-    users.router,
-    prefix=f"{settings.api_v1_prefix}/auth",
-    tags=["Authentication & Users"]
-)
+    application.include_router(
+        agents.router,
+        prefix=f"{settings.api_v1_prefix}/agents",
+        tags=["Agents"]
+    )
 
-app.include_router(
-    agents.router,
-    prefix=f"{settings.api_v1_prefix}/agents",
-    tags=["Agents"]
-)
+    return application
+
+
+app = create_application()
 
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """Root endpoint with API information"""
     return {
         "message": f"Welcome to {settings.app_name}",
         "version": settings.version,
-        "docs": "/docs"
+        "docs_url": "/docs",
+        "api_version": settings.api_v1_prefix
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": settings.app_name}
+    """Health check endpoint for monitoring"""
+    return {
+        "status": "healthy",
+        "service": settings.app_name,
+        "version": settings.version
+    }

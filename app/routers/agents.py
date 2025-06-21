@@ -1,141 +1,139 @@
+from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import List, Optional
+from odmantic import AIOEngine
 
-from app.schemas import (
-    AgentCreate, AgentUpdate, AgentResponse,
-    MessageResponse, ErrorResponse
-)
-from app.services.agent_service import agent_service
-from app.utils.auth import get_current_active_user
-from app.models import User
+from app import crud, schemas
+from app.database.mongodb import get_engine
+from app.core.security import get_current_active_user
+from app.models.user import User
 
 router = APIRouter()
 
 
-@router.post("/", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=schemas.Agent, status_code=status.HTTP_201_CREATED)
 async def create_agent(
-    agent_data: AgentCreate,
-    current_user: User = Depends(get_current_active_user)
+    agent_data: schemas.AgentCreate,
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
 ):
     """Create a new agent"""
-    try:
-        agent = await agent_service.create_agent(agent_data, str(current_user.id))
-        return AgentResponse(**agent.dict())
-    except ValueError as e:
+    # Check if agent with same name already exists for this user
+    existing_agent = await crud.agent.get_by_name(engine, name=agent_data.name)
+    if existing_agent and existing_agent.created_by == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            status_code=400,
+            detail="Agent with this name already exists for your account",
         )
+    
+    # Create agent with current user as owner
+    agent_dict = agent_data.dict()
+    agent_dict["created_by"] = current_user.id
+    agent = await crud.agent.create(engine, obj_in=schemas.AgentCreate(**agent_dict))
+    
+    return agent
 
 
-@router.get("/", response_model=List[AgentResponse])
-async def get_my_agents(
+@router.get("/", response_model=List[schemas.Agent])
+async def get_user_agents(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
 ):
-    """Get all agents created by the current user"""
-    agents = await agent_service.get_agents_by_user(
-        str(current_user.id), skip=skip, limit=limit
+    """Get current user's agents"""
+    agents = await crud.agent.get_by_user(
+        engine, owner_id=str(current_user.id), skip=skip, limit=limit
     )
-    return [AgentResponse(**agent.dict()) for agent in agents]
+    return agents
 
 
-@router.get("/search", response_model=List[AgentResponse])
+@router.get("/search", response_model=List[schemas.Agent])
 async def search_agents(
     q: str = Query(..., min_length=1, description="Search query"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
 ):
-    """Search agents by name or description (only user's own agents)"""
-    agents = await agent_service.search_agents(
-        q, user_id=str(current_user.id), skip=skip, limit=limit
+    """Search user's agents by name or description"""
+    agents = await crud.agent.search(
+        engine, query=q, owner_id=str(current_user.id), skip=skip, limit=limit
     )
-    return [AgentResponse(**agent.dict()) for agent in agents]
+    return agents
 
 
-@router.get("/stats")
-async def get_agent_stats(current_user: User = Depends(get_current_active_user)):
-    """Get agent statistics for the current user"""
-    stats = await agent_service.get_agent_stats(str(current_user.id))
+@router.get("/stats", response_model=dict)
+async def get_agent_stats(
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
+):
+    """Get agent statistics for current user"""
+    stats = await crud.agent.get_stats_by_user(engine, owner_id=str(current_user.id))
     return stats
 
 
-@router.get("/{agent_id}", response_model=AgentResponse)
+@router.get("/{agent_id}", response_model=schemas.Agent)
 async def get_agent(
     agent_id: str,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
 ):
-    """Get a specific agent by ID"""
-    agent = await agent_service.get_agent_by_id(agent_id)
+    """Get specific agent by ID"""
+    agent = await crud.agent.get(engine, id=agent_id)
     if not agent:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
-        )
+        raise HTTPException(status_code=404, detail="Agent not found")
     
     # Check if user owns this agent
-    if str(agent.created_by) != str(current_user.id):
+    if agent.created_by != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permission denied: You can only view agents you created"
+            status_code=403, detail="Not authorized to access this agent"
         )
     
-    return AgentResponse(**agent.dict())
+    return agent
 
 
-@router.put("/{agent_id}", response_model=AgentResponse)
+@router.put("/{agent_id}", response_model=schemas.Agent)
 async def update_agent(
     agent_id: str,
-    agent_update: AgentUpdate,
-    current_user: User = Depends(get_current_active_user)
+    agent_update: schemas.AgentUpdate,
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
 ):
-    """Update an agent"""
-    try:
-        updated_agent = await agent_service.update_agent(
-            agent_id, agent_update, str(current_user.id)
-        )
-        if not updated_agent:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No changes made or agent not found"
-            )
-        return AgentResponse(**updated_agent.dict())
-    except ValueError as e:
+    """Update agent"""
+    agent = await crud.agent.get(engine, id=agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # Check if user owns this agent
+    if agent.created_by != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            status_code=403, detail="Not authorized to modify this agent"
         )
+    
+    agent = await crud.agent.update(engine, db_obj=agent, obj_in=agent_update)
+    return agent
 
 
-@router.delete("/{agent_id}", response_model=MessageResponse)
+@router.delete("/{agent_id}", response_model=schemas.Msg)
 async def delete_agent(
     agent_id: str,
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
 ):
-    """Delete an agent (soft delete)"""
-    try:
-        success = await agent_service.delete_agent(agent_id, str(current_user.id))
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to delete agent"
-            )
-        return MessageResponse(message="Agent deleted successfully")
-    except ValueError as e:
+    """Delete agent (soft delete)"""
+    agent = await crud.agent.get(engine, id=agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # Check if user owns this agent
+    if agent.created_by != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            status_code=403, detail="Not authorized to delete this agent"
         )
-
-
-@router.get("/all/admin", response_model=List[AgentResponse])
-async def get_all_agents(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
-    current_user: User = Depends(get_current_active_user)
-):
-    """Get all agents (admin function - you may want to add admin role check)"""
-    agents = await agent_service.get_agents(skip=skip, limit=limit)
-    return [AgentResponse(**agent.dict()) for agent in agents]
+    
+    # Soft delete by setting is_active to False
+    await crud.agent.update(
+        engine, db_obj=agent, obj_in={"is_active": False}
+    )
+    
+    return schemas.Msg(msg="Agent deleted successfully")
