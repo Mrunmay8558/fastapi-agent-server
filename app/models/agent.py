@@ -40,7 +40,9 @@ class Agent(Model):
     provider_config: ProviderConfig
     features: AgentFeatures = Field(default_factory=AgentFeatures)
     is_active: bool = Field(default=True)
-    created_by: ObjectId = Field(..., description="User ID who created this agent", index=True)
+    created_by: ObjectId = Field(
+        ..., description="User ID who created this agent", index=True
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

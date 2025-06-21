@@ -5,12 +5,14 @@ This project has been completely restructured to follow the [MongoDB Labs Full-S
 ## 🚀 Major Improvements
 
 ### 1. **Modern Database Architecture**
+
 - **ODMantic Integration**: Replaced basic PyMongo/Motor with ODMantic ODM for better type safety and automatic serialization
 - **Generic CRUD Operations**: Implemented inheritance-based CRUD operations following the template pattern
 - **Database Dependency Injection**: Proper FastAPI dependency injection for database operations
 - **Automatic Indexing**: Database initialization script with proper indexes for performance
 
 ### 2. **Enhanced Project Structure**
+
 ```
 fastapi-agent-server/
 ├── app/
@@ -38,18 +40,21 @@ fastapi-agent-server/
 ```
 
 ### 3. **Advanced Authentication & Security**
+
 - **OAuth2 with JWT**: Production-ready token authentication
 - **Role-based Access Control**: Superuser and regular user permissions
 - **Secure Password Hashing**: bcrypt password hashing
 - **Token Validation**: Proper JWT token validation and user session management
 
 ### 4. **API Architecture Improvements**
+
 - **API Versioning**: Proper `/api/v1/` prefix structure
 - **Response Models**: Comprehensive Pydantic schemas for all endpoints
 - **Error Handling**: Standardized HTTP exception handling
 - **Documentation**: Auto-generated OpenAPI documentation
 
 ### 5. **Database Features**
+
 - **Soft Deletes**: Users and agents are deactivated instead of hard deleted
 - **Timestamps**: Automatic created_at and updated_at tracking
 - **Relationships**: Proper ObjectId references between users and agents
@@ -68,12 +73,15 @@ fastapi-agent-server/
 ## 🚦 Getting Started
 
 ### 1. Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 2. Set Environment Variables
+
 Create a `.env` file:
+
 ```env
 # App Settings
 APP_NAME="FastAPI Agent Server"
@@ -91,11 +99,13 @@ FIRST_SUPERUSER_PASSWORD="changethis"
 ```
 
 ### 3. Initialize Database
+
 ```bash
 python app/database/init_db.py
 ```
 
 ### 4. Run the Application
+
 ```bash
 uvicorn main:app --reload
 ```
@@ -103,10 +113,12 @@ uvicorn main:app --reload
 ## 📡 API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/login/access-token` - Login and get JWT token
 - `POST /api/v1/auth/test-token` - Test token validity
 
 ### Users
+
 - `POST /api/v1/users/register` - Register new user
 - `GET /api/v1/users/me` - Get current user info
 - `PUT /api/v1/users/me` - Update current user
@@ -115,6 +127,7 @@ uvicorn main:app --reload
 - `PUT /api/v1/users/{user_id}` - Update user (superuser only)
 
 ### Agents
+
 - `POST /api/v1/agents/` - Create new agent
 - `GET /api/v1/agents/` - List user's agents
 - `GET /api/v1/agents/{agent_id}` - Get agent details
@@ -156,13 +169,15 @@ await crud.user.remove(engine, id=user.id)
 ## 📊 Database Schema
 
 ### User Model
+
 - Email and username uniqueness
 - Password hashing
 - User roles (superuser/regular)
 - Agent associations
 - Activity tracking
 
-### Agent Model  
+### Agent Model
+
 - Provider configurations (TTS, STT, LLM)
 - Feature toggles
 - Owner relationships

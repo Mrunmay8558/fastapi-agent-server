@@ -26,12 +26,11 @@ async def login_access_token(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
     elif not await crud.user.is_active(user):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Inactive user"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
         )
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     return {

@@ -24,7 +24,7 @@ def create_application() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
-        openapi_url=f"{settings.api_v1_prefix}/openapi.json"
+        openapi_url=f"{settings.api_v1_prefix}/openapi.json",
     )
 
     # Add CORS middleware
@@ -38,21 +38,15 @@ def create_application() -> FastAPI:
 
     # Include routers with proper API versioning
     application.include_router(
-        auth.router,
-        prefix=f"{settings.api_v1_prefix}/auth",
-        tags=["Authentication"]
-    )
-    
-    application.include_router(
-        users.router,
-        prefix=f"{settings.api_v1_prefix}/users",
-        tags=["Users"]
+        auth.router, prefix=f"{settings.api_v1_prefix}/auth", tags=["Authentication"]
     )
 
     application.include_router(
-        agents.router,
-        prefix=f"{settings.api_v1_prefix}/agents",
-        tags=["Agents"]
+        users.router, prefix=f"{settings.api_v1_prefix}/users", tags=["Users"]
+    )
+
+    application.include_router(
+        agents.router, prefix=f"{settings.api_v1_prefix}/agents", tags=["Agents"]
     )
 
     return application
@@ -68,7 +62,7 @@ async def root():
         "message": f"Welcome to {settings.app_name}",
         "version": settings.version,
         "docs_url": "/docs",
-        "api_version": settings.api_v1_prefix
+        "api_version": settings.api_v1_prefix,
     }
 
 
@@ -78,5 +72,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": settings.app_name,
-        "version": settings.version
+        "version": settings.version,
     }

@@ -7,6 +7,7 @@ from odmantic import ObjectId
 # Standard Pydantic models for API schemas (not ODMantic embedded models)
 class ProviderConfig(BaseModel):
     """Configuration for TTS, STT, and LLM providers"""
+
     tts_provider: str = Field(..., description="Text-to-Speech provider")
     stt_provider: str = Field(..., description="Speech-to-Text provider")
     llm_provider: str = Field(..., description="Large Language Model provider")
@@ -17,6 +18,7 @@ class ProviderConfig(BaseModel):
 
 class AgentFeatures(BaseModel):
     """Features enabled for the agent"""
+
     voice_chat: bool = Field(default=False)
     text_chat: bool = Field(default=True)
     file_upload: bool = Field(default=False)

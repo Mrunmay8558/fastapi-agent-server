@@ -28,7 +28,9 @@ def create_access_token(
             minutes=settings.access_token_expire_minutes
         )
     to_encode = {"exp": expire, "sub": str(subject)}
-    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.secret_key, algorithm=settings.algorithm
+    )
     return encoded_jwt
 
 
@@ -43,8 +45,7 @@ def get_password_hash(password: str) -> str:
 
 
 async def get_current_user(
-    engine: AIOEngine = Depends(get_engine), 
-    token: str = Depends(oauth2_scheme)
+    engine: AIOEngine = Depends(get_engine), token: str = Depends(oauth2_scheme)
 ) -> Any:
     """Get current user from JWT token"""
     credentials_exception = HTTPException(

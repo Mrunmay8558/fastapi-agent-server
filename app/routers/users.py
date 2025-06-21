@@ -61,9 +61,7 @@ async def login_user(
 
 
 @router.get("/me", response_model=schemas.User)
-async def get_current_user_info(
-    current_user: User = Depends(get_current_active_user)
-):
+async def get_current_user_info(current_user: User = Depends(get_current_active_user)):
     """Get current user information"""
     return current_user
 
@@ -105,9 +103,7 @@ async def read_user_by_id(
     if user.id == current_user.id:
         return user
     if not await crud.user.is_superuser(current_user):
-        raise HTTPException(
-            status_code=400, detail="Not enough privileges"
-        )
+        raise HTTPException(status_code=400, detail="Not enough privileges")
     return user
 
 

@@ -22,11 +22,11 @@ class User(Model):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = Field(None)
 
-    @field_validator('phone')
+    @field_validator("phone")
     @classmethod
     def validate_phone(cls, v):
         if v is not None and not re.match(r"^\+?1?\d{9,15}$", v):
-            raise ValueError('Invalid phone number format')
+            raise ValueError("Invalid phone number format")
         return v
 
     model_config = {"collection": "users"}

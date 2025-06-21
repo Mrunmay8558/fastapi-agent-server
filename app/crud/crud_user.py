@@ -11,7 +11,9 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         """Get user by email"""
         return await engine.find_one(User, User.email == email)
 
-    async def get_by_username(self, engine: AIOEngine, *, username: str) -> Optional[User]:
+    async def get_by_username(
+        self, engine: AIOEngine, *, username: str
+    ) -> Optional[User]:
         """Get user by username"""
         return await engine.find_one(User, User.username == username)
 
@@ -28,22 +30,28 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         return await engine.save(db_obj)
 
     async def update(
-        self, engine: AIOEngine, *, db_obj: User, obj_in: Union[UserUpdate, Dict[str, Any]]
+        self,
+        engine: AIOEngine,
+        *,
+        db_obj: User,
+        obj_in: Union[UserUpdate, Dict[str, Any]]
     ) -> User:
         """Update user with optional password hashing"""
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
             update_data = obj_in.dict(exclude_unset=True)
-        
+
         if "password" in update_data:
             hashed_password = get_password_hash(update_data["password"])
             del update_data["password"]
             update_data["hashed_password"] = hashed_password
-        
+
         return await super().update(engine, db_obj=db_obj, obj_in=update_data)
 
-    async def authenticate(self, engine: AIOEngine, *, email: str, password: str) -> Optional[User]:
+    async def authenticate(
+        self, engine: AIOEngine, *, email: str, password: str
+    ) -> Optional[User]:
         """Authenticate user by email and password"""
         user = await self.get_by_email(engine, email=email)
         if not user:

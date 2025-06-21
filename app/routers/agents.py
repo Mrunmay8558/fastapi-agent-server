@@ -24,12 +24,12 @@ async def create_agent(
             status_code=400,
             detail="Agent with this name already exists for your account",
         )
-    
+
     # Create agent with current user as owner
     agent_dict = agent_data.dict()
     agent_dict["created_by"] = current_user.id
     agent = await crud.agent.create(engine, obj_in=schemas.AgentCreate(**agent_dict))
-    
+
     return agent
 
 
@@ -82,13 +82,13 @@ async def get_agent(
     agent = await crud.agent.get(engine, id=agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     # Check if user owns this agent
     if agent.created_by != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not authorized to access this agent"
         )
-    
+
     return agent
 
 
@@ -103,13 +103,13 @@ async def update_agent(
     agent = await crud.agent.get(engine, id=agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     # Check if user owns this agent
     if agent.created_by != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not authorized to modify this agent"
         )
-    
+
     agent = await crud.agent.update(engine, db_obj=agent, obj_in=agent_update)
     return agent
 
@@ -124,16 +124,14 @@ async def delete_agent(
     agent = await crud.agent.get(engine, id=agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     # Check if user owns this agent
     if agent.created_by != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not authorized to delete this agent"
         )
-    
+
     # Soft delete by setting is_active to False
-    await crud.agent.update(
-        engine, db_obj=agent, obj_in={"is_active": False}
-    )
-    
+    await crud.agent.update(engine, db_obj=agent, obj_in={"is_active": False})
+
     return schemas.Msg(msg="Agent deleted successfully")

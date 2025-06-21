@@ -12,9 +12,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         """
         CRUD object with default methods to Create, Read, Update, Delete (CRUD).
-        
+
         **Parameters**
-        
+
         * `model`: An ODMantic model class
         * `schema`: A Pydantic model (schema) class
         """
@@ -52,11 +52,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             update_data = obj_in
         else:
             update_data = obj_in.dict(exclude_unset=True)
-        
+
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
-        
+
         return await engine.save(db_obj)
 
     async def remove(self, engine: AIOEngine, *, id: Any) -> Optional[ModelType]:
