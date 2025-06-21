@@ -45,3 +45,46 @@ class User(UserBase):
 
 class UserInDB(User):
     hashed_password: str
+
+
+# Enhanced response schemas with populated agents
+class UserWithAgents(BaseModel):
+    """User response with populated agent models"""
+
+    id: ObjectId = Field(alias="_id")
+    first_name: str
+    last_name: str
+    email: EmailStr
+    username: str
+    phone: Optional[str] = None
+    is_active: bool
+    is_verified: bool
+    is_superuser: bool
+    agent_ids: List[ObjectId] = Field(default_factory=list)
+    agents: List[dict] = Field(
+        default_factory=list, description="Populated agent models"
+    )
+    created_at: datetime
+    updated_at: datetime
+    last_login: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class UserAgentSummary(BaseModel):
+    """Lightweight user response with agent count"""
+
+    id: ObjectId = Field(alias="_id")
+    first_name: str
+    last_name: str
+    email: EmailStr
+    username: str
+    is_active: bool
+    agent_count: int = Field(description="Number of agents owned by this user")
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True

@@ -1,4 +1,11 @@
-from .user import User, UserCreate, UserUpdate, UserInDB
+from .user import (
+    User,
+    UserCreate,
+    UserUpdate,
+    UserInDB,
+    UserWithAgents,
+    UserAgentSummary,
+)
 from .agent import (
     Agent,
     AgentCreate,
@@ -14,6 +21,8 @@ __all__ = [
     "UserCreate",
     "UserUpdate",
     "UserInDB",
+    "UserWithAgents",
+    "UserAgentSummary",
     "Agent",
     "AgentCreate",
     "AgentUpdate",

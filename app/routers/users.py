@@ -89,35 +89,65 @@ async def get_users(
     return users
 
 
-@router.get("/{user_id}", response_model=schemas.User)
-async def read_user_by_id(
+@router.get("/with-agents", response_model=List[schemas.UserWithAgents])
+async def get_users_with_agents(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_active_superuser),
+    engine: AIOEngine = Depends(get_engine),
+):
+    """Get list of users with populated agent models (superuser only)"""
+    users_with_agents = await crud.user.get_multi_with_agents(
+        engine, skip=skip, limit=limit
+    )
+    return users_with_agents
+
+
+@router.get("/me/with-agents", response_model=schemas.UserWithAgents)
+async def get_current_user_with_agents(
+    current_user: User = Depends(get_current_active_user),
+    engine: AIOEngine = Depends(get_engine),
+):
+    """Get current user with populated agent models"""
+    user_with_agents = await crud.user.get_with_agents(
+        engine, user_id=str(current_user.id)
+    )
+    if not user_with_agents:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user_with_agents
+
+
+@router.get("/{user_id}/with-agents", response_model=schemas.UserWithAgents)
+async def get_user_with_agents(
     user_id: str,
     current_user: User = Depends(get_current_active_user),
     engine: AIOEngine = Depends(get_engine),
 ):
-    """Get a specific user by id"""
-    user = await crud.user.get(engine, id=user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if user.id == current_user.id:
-        return user
-    if not await crud.user.is_superuser(current_user):
+    """Get a specific user with populated agent models"""
+    # Check permissions
+    if str(current_user.id) != user_id and not await crud.user.is_superuser(
+        current_user
+    ):
         raise HTTPException(status_code=400, detail="Not enough privileges")
-    return user
+
+    user_with_agents = await crud.user.get_with_agents(engine, user_id=user_id)
+    if not user_with_agents:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user_with_agents
 
 
-@router.put("/{user_id}", response_model=schemas.User)
-async def update_user(
+@router.get("/{user_id}/agents", response_model=List[schemas.Agent])
+async def get_user_agents(
     user_id: str,
-    user_in: schemas.UserUpdate,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_user),
     engine: AIOEngine = Depends(get_engine),
 ):
-    """Update a user (superuser only)"""
-    user = await crud.user.get(engine, id=user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    """Get all agents belonging to a specific user"""
+    # Check permissions
+    if str(current_user.id) != user_id and not await crud.user.is_superuser(
+        current_user
+    ):
+        raise HTTPException(status_code=400, detail="Not enough privileges")
 
-    user = await crud.user.update(engine, db_obj=user, obj_in=user_in)
-    return user
+    agents = await crud.user.get_user_agents(engine, user_id=user_id)
+    return agents

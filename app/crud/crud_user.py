@@ -1,8 +1,9 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 from odmantic import AIOEngine
 from app.core.security import get_password_hash, verify_password
 from app.crud.base import CRUDBase
 from app.models.user import User
+from app.models.agent import Agent
 from app.schemas.user import UserCreate, UserUpdate
 
 
@@ -67,6 +68,48 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
     async def is_superuser(self, user: User) -> bool:
         """Check if user is superuser"""
         return user.is_superuser
+
+    async def get_with_agents(
+        self, engine: AIOEngine, *, user_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get user with populated agent models"""
+        user = await self.get(engine, id=user_id)
+        if not user:
+            return None
+
+        # Fetch all agents for this user
+        agents = await engine.find(Agent, Agent.id.in_(user.agent_ids))
+
+        # Convert to dict and add populated agents
+        user_dict = user.dict()
+        user_dict["agents"] = [agent.dict() for agent in agents]
+
+        return user_dict
+
+    async def get_multi_with_agents(
+        self, engine: AIOEngine, *, skip: int = 0, limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Get multiple users with populated agent models"""
+        users = await self.get_multi(engine, skip=skip, limit=limit)
+
+        result = []
+        for user in users:
+            # Fetch agents for each user
+            agents = await engine.find(Agent, Agent.id.in_(user.agent_ids))
+
+            user_dict = user.dict()
+            user_dict["agents"] = [agent.dict() for agent in agents]
+            result.append(user_dict)
+
+        return result
+
+    async def get_user_agents(self, engine: AIOEngine, *, user_id: str) -> List[Agent]:
+        """Get all agents belonging to a specific user"""
+        user = await self.get(engine, id=user_id)
+        if not user:
+            return []
+
+        return await engine.find(Agent, Agent.id.in_(user.agent_ids))
 
 
 user = CRUDUser(User)
